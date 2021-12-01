@@ -1,4 +1,5 @@
 import csv;
+from copy import deepcopy
 
 def read_and_store_tsv(fileName: str):
     tsv_rows = []
@@ -37,8 +38,33 @@ def create_bag_of_words(rows: [str], three_weight):
 
     return bagOfWords
 
-def calculate_likelihood(bag_of_words):
-    pass
+def calculate_likelihood(bag_of_words, three_weight : bool):
+    local_bow =  deepcopy(bag_of_words)
+    if three_weight:
+        max_range = 3
+        class_counts = {"0":0,
+                        "1":0,
+                        "2":0}
+    else:
+        max_range = 5
+        class_counts = {"0":0,
+                        "1":0,
+                        "2":0,
+                        "3":0,
+                        "4":0}
+    #TODO: put this in another function
+    for key in bag_of_words:
+        for wClass in bag_of_words[key]:
+            count = class_counts[wClass] + bag_of_words[key][wClass]
+            class_counts.update({wClass: count})
+
+    for key in local_bow:
+        for wClass  in local_bow[key]:
+            temp_count =  local_bow[key][wClass]
+            class_total = class_counts[wClass]
+            local_bow[key][wClass] = temp_count / class_total
+    return local_bow
+
 def calculate_prior_probability(dataset_rows, three_weight):
     prior_probabilities = {}
     max_range = 0
@@ -60,6 +86,9 @@ def calculate_prior_probability(dataset_rows, three_weight):
         prior_probabilities.update({i:(class_count/dataset_size)})
     return prior_probabilities
 
+def classify():
+    pass
+
 if __name__ == '__main__':
 
     dataset_names = ("train.tsv","dev.tsv")
@@ -69,9 +98,9 @@ if __name__ == '__main__':
 
     for name in dataset_names:
         rows = read_and_store_tsv(name)
-        bow = create_bag_of_words(rows, False)
-        prior_probability = calculate_prior_probability(rows, False )
-
+        bow = create_bag_of_words(rows, True)
+        prior_probability = calculate_prior_probability(rows, True )
+        likelihood = calculate_likelihood(bow, True)
         dict_key_name = name[:(len(name))-4]
         combined_bag_of_words.update({dict_key_name : bow})
         dataset_rows.update({dict_key_name: rows})
