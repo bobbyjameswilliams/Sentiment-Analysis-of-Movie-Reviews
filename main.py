@@ -1,6 +1,8 @@
 import csv;
 from copy import deepcopy
 
+#Housekeeping
+
 def read_and_store_tsv(fileName: str):
     tsv_rows = []
     tsv_file = open(fileName)
@@ -37,6 +39,8 @@ def create_bag_of_words(rows: [str], three_weight):
                 bagOfWords.update(dict)
 
     return bagOfWords
+
+#Model Creating
 
 def calculate_likelihood(bag_of_words, three_weight : bool):
     local_bow =  deepcopy(bag_of_words)
@@ -86,6 +90,17 @@ def calculate_prior_probability(dataset_rows, three_weight):
         prior_probabilities.update({i:(class_count/dataset_size)})
     return prior_probabilities
 
+def calculate_posterior_probability(prior_probabilities, likelihoods, rows, threeWeight):
+    for row in rows:
+        sentence = row[1]
+        sentence.split(" ")
+        if three_weight:
+            max_range = 3
+        else:
+            max_range = 5
+
+    pass
+
 def classify():
     pass
 
@@ -95,19 +110,21 @@ if __name__ == '__main__':
     dataset_rows = {}
     combined_bag_of_words = {}
     prior_probabilities = {}
-
+    likelihoods = {}
     for name in dataset_names:
         rows = read_and_store_tsv(name)
         bow = create_bag_of_words(rows, True)
         prior_probability = calculate_prior_probability(rows, True )
         likelihood = calculate_likelihood(bow, True)
+
         dict_key_name = name[:(len(name))-4]
         combined_bag_of_words.update({dict_key_name : bow})
+        likelihoods.update({dict_key_name: likelihood})
         dataset_rows.update({dict_key_name: rows})
         prior_probabilities.update({dict_key_name: prior_probability})
 
     print("hehe")
-
+    print("bruh")
 
 
 
