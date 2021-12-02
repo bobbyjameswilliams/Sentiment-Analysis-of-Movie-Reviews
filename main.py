@@ -1,5 +1,6 @@
 import csv;
 from copy import deepcopy
+import struct
 
 #Housekeeping
 
@@ -57,17 +58,18 @@ def calculate_likelihood(bag_of_words, three_weight : bool):
                         "3":0,
                         "4":0}
     #TODO: put this in another function
-    for key in bag_of_words:
-        for wClass in bag_of_words[key]:
-            count = class_counts[wClass] + bag_of_words[key][wClass]
+    for word in bag_of_words:
+        for wClass in bag_of_words[word]:
+            count = class_counts[wClass] + bag_of_words[word][wClass]
             class_counts.update({wClass: count})
 
-    for key in local_bow:
-        for wClass  in local_bow[key]:
-            temp_count =  local_bow[key][wClass]
+    for word in local_bow:
+        for wClass  in local_bow[word]:
+            temp_count =  local_bow[word][wClass]
             class_total = class_counts[wClass]
-            local_bow[key][wClass] = temp_count / class_total
-    return local_bow
+            #with laplace smoothing
+            local_bow[word][wClass] = (temp_count + 1) / (class_total + len(local_bow))
+    return local_bow, class_counts
 
 def calculate_prior_probability(dataset_rows, three_weight):
     prior_probabilities = {}
@@ -90,15 +92,42 @@ def calculate_prior_probability(dataset_rows, three_weight):
         prior_probabilities.update({i:(class_count/dataset_size)})
     return prior_probabilities
 
-def calculate_posterior_probability(prior_probabilities, likelihoods, rows, threeWeight):
+def calculate_posterior_probability(prior_probabilities, likelihoods, class_counts, rows, three_weight):
+    classifications = {}
     for row in rows:
+        sentence_id = row[0]
         sentence = row[1]
-        sentence.split(" ")
+        sentence = sentence.split(" ")
         if three_weight:
+            classes = {0: prior_probabilities[0],
+                       1: prior_probabilities[1],
+                       2: prior_probabilities[2]}
             max_range = 3
         else:
+            classes = {
+                0: prior_probabilities[0],
+                1: prior_probabilities[1],
+                2: prior_probabilities[2],
+                3: prior_probabilities[3],
+                4: prior_probabilities[4]
+            }
             max_range = 5
+        #calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
+        #weight attached.
+        for word in sentence:
+            for i in range(0, max_range):
+                if (word in likelihoods) and (i in likelihoods[word]) :
+                    #prev_val = classes[i]
+                    classes[i] *= likelihoods[word][i]
+                else:
+                    classes[i] *= (1/ (class_counts[str(i)] + len(likelihoods)))
+        classification = max(classes, key=classes.get)
+        classifications.update({sentence_id: classification})
+    return classifications
 
+
+
+def evaluate():
     pass
 
 def classify():
@@ -115,13 +144,15 @@ if __name__ == '__main__':
         rows = read_and_store_tsv(name)
         bow = create_bag_of_words(rows, True)
         prior_probability = calculate_prior_probability(rows, True )
-        likelihood = calculate_likelihood(bow, True)
+        likelihood, class_counts = calculate_likelihood(bow, True)
+        posterior = calculate_posterior_probability(prior_probability, likelihood,class_counts,rows,True)
 
         dict_key_name = name[:(len(name))-4]
         combined_bag_of_words.update({dict_key_name : bow})
         likelihoods.update({dict_key_name: likelihood})
         dataset_rows.update({dict_key_name: rows})
         prior_probabilities.update({dict_key_name: prior_probability})
+
 
     print("hehe")
     print("bruh")
