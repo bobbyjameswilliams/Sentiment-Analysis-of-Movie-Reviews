@@ -3,6 +3,11 @@ from copy import deepcopy
 import struct
 
 #Housekeeping
+MAP_TO_THREE_DICT = {'0': '0',
+                     '1': '0',
+                     '2': '1',
+                     '3': '2',
+                     '4': '2'}
 
 def read_and_store_tsv(fileName: str):
     tsv_rows = []
@@ -14,16 +19,11 @@ def read_and_store_tsv(fileName: str):
     return tsv_rows
 
 def create_bag_of_words(rows: [str], three_weight):
-    map_to_three_dict = {'0': '0',
-                         '1': '0',
-                         '2': '1',
-                         '3': '2',
-                         '4': '2'}
     bagOfWords = {}
     for row in rows:
         sentence = row[1]
         if three_weight:
-                s_class = map_to_three_dict[row[2]]
+                s_class = MAP_TO_THREE_DICT[row[2]]
         else:
                 s_class = row[2]
 
@@ -47,6 +47,7 @@ def calculate_likelihood(bag_of_words, three_weight : bool):
     local_bow =  deepcopy(bag_of_words)
     if three_weight:
         max_range = 3
+        #var below counts the occurrances of each class.
         class_counts = {"0":0,
                         "1":0,
                         "2":0}
@@ -73,7 +74,25 @@ def calculate_likelihood(bag_of_words, three_weight : bool):
 
 #TODO fix for three
 def calculate_prior_probability(dataset_rows, three_weight):
-    
+    prior_probabilities = {}
+    max_range = 0
+    if three_weight:
+        max_range = 3
+    else:
+        max_range = 5
+
+    dataset_size = len(dataset_rows)
+    for i in range(0, max_range):
+        class_count = 0
+        for row in dataset_rows:
+            classification = row[2]
+            if three_weight:
+                if str(i) in MAP_TO_THREE_DICT[classification]:
+                    class_count += 1
+            else:
+                if str(i) in classification:
+                    class_count += 1
+        prior_probabilities.update({i: (class_count / dataset_size)})
     return prior_probabilities
 
 def calculate_posterior_probability(prior_probabilities, likelihoods, class_counts, rows, three_weight):
@@ -121,7 +140,7 @@ def classify():
 if __name__ == '__main__':
 
     dataset_names = ("train.tsv","dev.tsv")
-    three: bool = True
+    three: bool = False
 
     #Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -139,7 +158,6 @@ if __name__ == '__main__':
     rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability,likelihood,class_counts,rows,three)
 
-    print("hehe")
     print("bruh")
 
 
