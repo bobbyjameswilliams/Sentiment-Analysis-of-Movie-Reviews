@@ -71,25 +71,9 @@ def calculate_likelihood(bag_of_words, three_weight : bool):
             local_bow[word][wClass] = (temp_count + 1) / (class_total + len(local_bow))
     return local_bow, class_counts
 
+#TODO fix for three
 def calculate_prior_probability(dataset_rows, three_weight):
-    prior_probabilities = {}
-    max_range = 0
-    #calculate the total number of sentences
-    #calculate the number of sentences for each class
-    #calculate the probability
-    #assign the probability in the dictionary
-    if three_weight:
-        max_range = 3
-    else:
-        max_range = 5
-
-    dataset_size = len(dataset_rows)
-    for i in range(0,max_range):
-        class_count = 0
-        for row in dataset_rows:
-            if str(i) in row[2]:
-                class_count += 1
-        prior_probabilities.update({i:(class_count/dataset_size)})
+    
     return prior_probabilities
 
 def calculate_posterior_probability(prior_probabilities, likelihoods, class_counts, rows, three_weight):
@@ -121,6 +105,7 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
                     classes[i] *= likelihoods[word][i]
                 else:
                     classes[i] *= (1/ (class_counts[str(i)] + len(likelihoods)))
+
         classification = max(classes, key=classes.get)
         classifications.update({sentence_id: classification})
     return classifications
@@ -136,23 +121,23 @@ def classify():
 if __name__ == '__main__':
 
     dataset_names = ("train.tsv","dev.tsv")
-    dataset_rows = {}
-    combined_bag_of_words = {}
-    prior_probabilities = {}
-    likelihoods = {}
-    for name in dataset_names:
-        rows = read_and_store_tsv(name)
-        bow = create_bag_of_words(rows, True)
-        prior_probability = calculate_prior_probability(rows, True )
-        likelihood, class_counts = calculate_likelihood(bow, True)
-        posterior = calculate_posterior_probability(prior_probability, likelihood,class_counts,rows,True)
+    three: bool = True
 
-        dict_key_name = name[:(len(name))-4]
-        combined_bag_of_words.update({dict_key_name : bow})
-        likelihoods.update({dict_key_name: likelihood})
-        dataset_rows.update({dict_key_name: rows})
-        prior_probabilities.update({dict_key_name: prior_probability})
+    #Training
+    rows = read_and_store_tsv(dataset_names[0])
+    bow = create_bag_of_words(rows, three)
+    prior_probability = calculate_prior_probability(rows, three )
+    likelihood, class_counts = calculate_likelihood(bow, three)
 
+    # dict_key_name = dataset_names[0][:(len(dataset_names[0]))-4]
+    # combined_bag_of_words.update({dict_key_name : bow})
+    # likelihoods.update({dict_key_name: likelihood})
+    # dataset_rows.update({dict_key_name: rows})
+    # prior_probabilities.update({dict_key_name: prior_probability})
+
+    #Development
+    rows = read_and_store_tsv(dataset_names[1])
+    posterior = calculate_posterior_probability(prior_probability,likelihood,class_counts,rows,three)
 
     print("hehe")
     print("bruh")
