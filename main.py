@@ -60,16 +60,18 @@ def calculate_likelihood(bag_of_words, three_weight : bool):
                         "4":0}
     #TODO: put this in another function
     for word in bag_of_words:
-        for wClass in bag_of_words[word]:
-            count = class_counts[wClass] + bag_of_words[word][wClass]
-            class_counts.update({wClass: count})
+        associated_sentiments = bag_of_words[word]
+        for sentiment_class in associated_sentiments:
+            count = class_counts[sentiment_class] + associated_sentiments[sentiment_class]
+            class_counts.update({sentiment_class: count})
 
     for word in local_bow:
-        for wClass  in local_bow[word]:
-            temp_count =  local_bow[word][wClass]
-            class_total = class_counts[wClass]
+        local_associated_sentiments = local_bow[word]
+        for sentiment_class  in local_associated_sentiments:
+            temp_count =  local_associated_sentiments[sentiment_class]
+            class_total = class_counts[sentiment_class]
             #with laplace smoothing
-            local_bow[word][wClass] = (temp_count + 1) / (class_total + len(local_bow))
+            local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
     return local_bow, class_counts
 
 #TODO fix for three
@@ -131,8 +133,18 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
 
 
 
-def evaluate():
-    pass
+def evaluate(classifications, dev_set):
+    correct = 0
+    total = len(classifications)
+    if len(classifications) != len(dev_set):
+        print("something went wrong.")
+    for item in dev_set:
+        correct_class = item[2]
+        doc_id = item[0]
+        if str(classifications[doc_id]) == correct_class:
+            correct += 1
+    percentage = (correct/total * 100)
+    print(str(percentage) +  "% correct")
 
 def classify():
     pass
@@ -140,7 +152,7 @@ def classify():
 if __name__ == '__main__':
 
     dataset_names = ("train.tsv","dev.tsv")
-    three: bool = False
+    three: bool = True
 
     #Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -155,8 +167,10 @@ if __name__ == '__main__':
     # prior_probabilities.update({dict_key_name: prior_probability})
 
     #Development
-    rows = read_and_store_tsv(dataset_names[1])
-    posterior = calculate_posterior_probability(prior_probability,likelihood,class_counts,rows,three)
+    dev_rows = read_and_store_tsv(dataset_names[1])
+    posterior = calculate_posterior_probability(prior_probability,likelihood,class_counts,dev_rows,three)
+
+    evaluate(posterior, dev_rows)
 
     print("bruh")
 
