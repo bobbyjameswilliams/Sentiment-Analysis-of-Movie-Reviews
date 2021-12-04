@@ -2,12 +2,13 @@ import csv;
 from copy import deepcopy
 import struct
 
-#Housekeeping
+# Housekeeping
 MAP_TO_THREE_DICT = {'0': '0',
                      '1': '0',
                      '2': '1',
                      '3': '2',
                      '4': '2'}
+
 
 def read_and_store_tsv(fileName: str):
     tsv_rows = []
@@ -18,14 +19,15 @@ def read_and_store_tsv(fileName: str):
     tsv_rows.pop(0)
     return tsv_rows
 
+
 def create_bag_of_words(rows: [str], three_weight):
     bagOfWords = {}
     for row in rows:
         sentence = row[1]
         if three_weight:
-                s_class = MAP_TO_THREE_DICT[row[2]]
+            s_class = MAP_TO_THREE_DICT[row[2]]
         else:
-                s_class = row[2]
+            s_class = row[2]
 
         words = sentence.split(" ")
         for word in words:
@@ -41,40 +43,9 @@ def create_bag_of_words(rows: [str], three_weight):
 
     return bagOfWords
 
-#Model Creating
 
-def calculate_likelihood(bag_of_words, three_weight : bool):
-    local_bow =  deepcopy(bag_of_words)
-    if three_weight:
-        max_range = 3
-        #var below counts the occurrances of each class.
-        class_counts = {"0":0,
-                        "1":0,
-                        "2":0}
-    else:
-        max_range = 5
-        class_counts = {"0":0,
-                        "1":0,
-                        "2":0,
-                        "3":0,
-                        "4":0}
-    #TODO: put this in another function
-    for word in bag_of_words:
-        associated_sentiments = bag_of_words[word]
-        for sentiment_class in associated_sentiments:
-            count = class_counts[sentiment_class] + associated_sentiments[sentiment_class]
-            class_counts.update({sentiment_class: count})
+# Model Creating
 
-    for word in local_bow:
-        local_associated_sentiments = local_bow[word]
-        for sentiment_class  in local_associated_sentiments:
-            temp_count =  local_associated_sentiments[sentiment_class]
-            class_total = class_counts[sentiment_class]
-            #with laplace smoothing
-            local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
-    return local_bow, class_counts
-
-#TODO fix for three
 def calculate_prior_probability(dataset_rows, three_weight):
     prior_probabilities = {}
     max_range = 0
@@ -97,6 +68,45 @@ def calculate_prior_probability(dataset_rows, three_weight):
         prior_probabilities.update({i: (class_count / dataset_size)})
     return prior_probabilities
 
+
+def laplace():
+    pass
+
+
+def calculate_likelihood(bag_of_words, three_weight: bool):
+    local_bow = deepcopy(bag_of_words)
+    if three_weight:
+        max_range = 3
+        # var below counts the occurrances of each class.
+        class_counts = {"0": 0,
+                        "1": 0,
+                        "2": 0}
+    else:
+        max_range = 5
+        class_counts = {"0": 0,
+                        "1": 0,
+                        "2": 0,
+                        "3": 0,
+                        "4": 0}
+    # TODO: put this in another function
+    for word in bag_of_words:
+        associated_sentiments = bag_of_words[word]
+        for sentiment_class in associated_sentiments:
+            count = class_counts[sentiment_class] + associated_sentiments[sentiment_class]
+            class_counts.update({sentiment_class: count})
+
+    for word in local_bow:
+        local_associated_sentiments = local_bow[word]
+        for sentiment_class in local_associated_sentiments:
+            temp_count = local_associated_sentiments[sentiment_class]
+            class_total = class_counts[sentiment_class]
+            # with laplace smoothing
+            #local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
+            # without laplace smoothing
+            local_associated_sentiments[sentiment_class] = temp_count / class_total
+    return local_bow, class_counts
+
+
 def calculate_posterior_probability(prior_probabilities, likelihoods, class_counts, rows, three_weight):
     classifications = {}
     for row in rows:
@@ -117,20 +127,22 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
                 4: prior_probabilities[4]
             }
             max_range = 5
-        #calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
-        #weight attached.
+        # calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
+        # weight attached.
         for word in sentence:
             for i in range(0, max_range):
-                if (word in likelihoods) and (i in likelihoods[word]) :
-                    #prev_val = classes[i]
+                # this condition down here is looking to be the problem
+                if (word in likelihoods) and (str(i) in likelihoods[word]):
+                    print("it got here")
+                    # prev_val = classes[i]
                     classes[i] *= likelihoods[word][i]
                 else:
-                    classes[i] *= (1/ (class_counts[str(i)] + len(likelihoods)))
+                    #classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
+                    classes[i] *= 0
 
         classification = max(classes, key=classes.get)
         classifications.update({sentence_id: classification})
     return classifications
-
 
 
 def evaluate(classifications, dev_set):
@@ -143,21 +155,22 @@ def evaluate(classifications, dev_set):
         doc_id = item[0]
         if str(classifications[doc_id]) == correct_class:
             correct += 1
-    percentage = (correct/total * 100)
-    print(str(percentage) +  "% correct")
+    percentage = (correct / total * 100)
+    print(str(percentage) + "% correct")
+
 
 def classify():
     pass
 
-if __name__ == '__main__':
 
-    dataset_names = ("train.tsv","dev.tsv")
+if __name__ == '__main__':
+    dataset_names = ("train.tsv", "dev.tsv")
     three: bool = True
 
-    #Training
+    # Training
     rows = read_and_store_tsv(dataset_names[0])
     bow = create_bag_of_words(rows, three)
-    prior_probability = calculate_prior_probability(rows, three )
+    prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
 
     # dict_key_name = dataset_names[0][:(len(dataset_names[0]))-4]
@@ -166,14 +179,10 @@ if __name__ == '__main__':
     # dataset_rows.update({dict_key_name: rows})
     # prior_probabilities.update({dict_key_name: prior_probability})
 
-    #Development
+    # Development
     dev_rows = read_and_store_tsv(dataset_names[1])
-    posterior = calculate_posterior_probability(prior_probability,likelihood,class_counts,dev_rows,three)
+    posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
-    evaluate(posterior, dev_rows)
+    #evaluate(posterior, dev_rows)
 
     print("bruh")
-
-
-
-
