@@ -146,7 +146,7 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
     return classifications
 
 
-def evaluate(classifications, dev_set):
+def evaluate(classifications, dev_set, three_weight):
     correct = 0
     total = len(classifications)
     if len(classifications) != len(dev_set):
@@ -154,8 +154,12 @@ def evaluate(classifications, dev_set):
     for item in dev_set:
         correct_class = item[2]
         doc_id = item[0]
-        if str(classifications[doc_id]) == correct_class:
-            correct += 1
+        if three_weight:
+            if str(classifications[doc_id]) == MAP_TO_THREE_DICT[correct_class]:
+                correct += 1
+        else:
+            if str(classifications[doc_id]) == correct_class:
+                correct += 1
     percentage = (correct / total * 100)
     print(str(percentage) + "% correct")
 
@@ -173,7 +177,7 @@ def stop_list(sentence):
 
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
-    three: bool = True
+    three: bool = False 
 
     # Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -191,6 +195,6 @@ if __name__ == '__main__':
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
-    evaluate(posterior, dev_rows)
+    evaluate(posterior, dev_rows, three)
 
-    print("bruh")
+    print("")
