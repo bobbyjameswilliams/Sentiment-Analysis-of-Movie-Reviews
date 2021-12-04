@@ -134,19 +134,19 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
                 # this condition down here is looking to be the problem
                 str_i = str(i)
                 if (word in likelihoods) and (str_i in likelihoods[word]):
-                    #print("it got here")
+                    # print("it got here")
                     # prev_val = classes[i]
                     classes[i] *= likelihoods[word][str_i]
                 else:
                     classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
-                    #classes[i] *= 0
 
         classification = max(classes, key=classes.get)
         classifications.update({sentence_id: classification})
     return classifications
 
 
-def evaluate(classifications, dev_set, three_weight):
+# evaluate can only be used on the dev set, where weights are given.
+def percentage_evaluate(classifications, dev_set, three_weight):
     correct = 0
     total = len(classifications)
     if len(classifications) != len(dev_set):
@@ -164,20 +164,25 @@ def evaluate(classifications, dev_set, three_weight):
     print(str(percentage) + "% correct")
 
 
-def classify():
+# This function will output the results of the posterior probability step using the results.
+def output_classification():
     pass
 
+
+# PREPROCESSING ################################################################
 def stemming(sentence):
     stemmed_sentence = None
     return stemmed_sentence
+
 
 def stop_list(sentence):
     stop_list_sentence = None
     return stop_list_sentence
 
+
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
-    three: bool = False 
+    three: bool = False
 
     # Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -185,16 +190,13 @@ if __name__ == '__main__':
     prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
 
-    # dict_key_name = dataset_names[0][:(len(dataset_names[0]))-4]
-    # combined_bag_of_words.update({dict_key_name : bow})
-    # likelihoods.update({dict_key_name: likelihood})
-    # dataset_rows.update({dict_key_name: rows})
-    # prior_probabilities.update({dict_key_name: prior_probability})
-
     # Development
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
-    evaluate(posterior, dev_rows, three)
+    # Evaluate (Development Only)
+    percentage_evaluate(posterior, dev_rows, three)
+
+    
 
     print("")
