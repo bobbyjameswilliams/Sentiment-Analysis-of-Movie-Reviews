@@ -101,9 +101,9 @@ def calculate_likelihood(bag_of_words, three_weight: bool):
             temp_count = local_associated_sentiments[sentiment_class]
             class_total = class_counts[sentiment_class]
             # with laplace smoothing
-            #local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
+            local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
             # without laplace smoothing
-            local_associated_sentiments[sentiment_class] = temp_count / class_total
+            # local_associated_sentiments[sentiment_class] = temp_count / class_total
     return local_bow, class_counts
 
 
@@ -132,13 +132,14 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
         for word in sentence:
             for i in range(0, max_range):
                 # this condition down here is looking to be the problem
-                if (word in likelihoods) and (str(i) in likelihoods[word]):
-                    print("it got here")
+                str_i = str(i)
+                if (word in likelihoods) and (str_i in likelihoods[word]):
+                    #print("it got here")
                     # prev_val = classes[i]
-                    classes[i] *= likelihoods[word][i]
+                    classes[i] *= likelihoods[word][str_i]
                 else:
-                    #classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
-                    classes[i] *= 0
+                    classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
+                    #classes[i] *= 0
 
         classification = max(classes, key=classes.get)
         classifications.update({sentence_id: classification})
@@ -162,6 +163,13 @@ def evaluate(classifications, dev_set):
 def classify():
     pass
 
+def stemming(sentence):
+    stemmed_sentence = None
+    return stemmed_sentence
+
+def stop_list(sentence):
+    stop_list_sentence = None
+    return stop_list_sentence
 
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
@@ -183,6 +191,6 @@ if __name__ == '__main__':
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
-    #evaluate(posterior, dev_rows)
+    evaluate(posterior, dev_rows)
 
     print("bruh")
