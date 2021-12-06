@@ -1,9 +1,14 @@
 import csv;
 from copy import deepcopy
+import matplotlib.pyplot as plt
+import numpy as np
+import itertools
 import struct
 
 # Housekeeping
 from typing import List, Dict
+
+from numpy import ndarray
 
 MAP_TO_THREE_DICT = {'0': '0',
                      '1': '0',
@@ -165,8 +170,79 @@ def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_we
     percentage = (correct / total * 100)
     print(str(percentage) + "% correct")
 
-def calculate_confusion_matrix():
-    pass
+
+def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], three_weight: bool) -> ndarray:
+
+    if len(predictions) != len(dev_set):
+        print("something went wrong.")
+
+    if three_weight:
+        confusion_matrix = np.zeros((3,3))
+        for item in dev_set:
+            doc_id = item[0]
+            correct_class = int(MAP_TO_THREE_DICT[item[2]])
+            prediction = predictions[doc_id]
+            confusion_matrix[correct_class][prediction] += 1
+    else:
+        confusion_matrix = np.zeros((5,5))
+        for item in dev_set:
+            doc_id = item[0]
+            correct_class = int(item[2])
+            prediction = predictions[doc_id]
+            confusion_matrix[correct_class][prediction] += 1
+    return confusion_matrix
+
+def plot_confusion_matrix(cm, target_names, title='Confusion matrix', cmap=None, normalize=True):
+
+    accuracy = np.trace(cm) / float(np.sum(cm))
+    print(accuracy)
+    misclass = 1 - accuracy
+
+    if normalize:
+        cm = cm.astype('float') / cm.sum()
+
+    if cmap is None:
+        cmap = plt.get_cmap('Blues')
+
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+
+    if target_names is not None:
+        tick_marks = np.arange(len(target_names))
+        plt.xticks(tick_marks, target_names, rotation=45)
+        plt.yticks(tick_marks, target_names)
+
+    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        if normalize:
+            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+        else:
+            plt.text(j, i, "{:,}".format(cm[i, j]),
+                     horizontalalignment="center",
+                     color="white" if cm[i, j] > thresh else "black")
+
+    plt.grid(False)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
+    plt.show()
+
+def generate_data_for_plot(three_weight: bool):
+    classes = []
+    if three_weight:
+        max = 3
+        title = "Three Class Classifier"
+    else:
+        max = 5
+        title = "Five Class Classifier"
+    for i in range(0,max):
+        classes.append(str(i))
+    return title, classes
+
 
 
 # This function will output the results of the posterior probability step using the results.
@@ -198,7 +274,11 @@ if __name__ == '__main__':
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
+
     # Evaluate (Development Only)
     calculate_accuracy(posterior, dev_rows, three)
+    confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
+    title, classes = generate_data_for_plot(three)
+    plot_confusion_matrix(confusion_matrix,target_names=classes, title= title,normalize= False)
 
     print("")
