@@ -192,17 +192,16 @@ def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], thre
             confusion_matrix[correct_class][prediction] += 1
     return confusion_matrix
 
-def plot_confusion_matrix(cm, target_names, title='Confusion matrix', cmap=None, normalize=True):
+def plot_confusion_matrix(cm, target_names, title='Confusion matrix'):
 
     accuracy = np.trace(cm) / float(np.sum(cm))
-    print(accuracy)
     misclass = 1 - accuracy
+    #
+    # if normalize:
+    #     cm = cm.astype('float') / cm.sum()
+    #
 
-    if normalize:
-        cm = cm.astype('float') / cm.sum()
-
-    if cmap is None:
-        cmap = plt.get_cmap('Blues')
+    cmap = plt.get_cmap('Blues')
 
     plt.figure(figsize=(8, 6))
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
@@ -214,16 +213,16 @@ def plot_confusion_matrix(cm, target_names, title='Confusion matrix', cmap=None,
         plt.xticks(tick_marks, target_names, rotation=45)
         plt.yticks(tick_marks, target_names)
 
-    thresh = cm.max() / 1.5 if normalize else cm.max() / 2
+    thresh = cm.max() / 2
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-        if normalize:
-            plt.text(j, i, "{:0.4f}".format(cm[i, j]),
-                     horizontalalignment="center",
-                     color="white" if cm[i, j] > thresh else "black")
-        else:
-            plt.text(j, i, "{:,}".format(cm[i, j]),
-                     horizontalalignment="center",
-                     color="white" if cm[i, j] > thresh else "black")
+        # if normalize:
+        #     plt.text(j, i, "{:0.4f}".format(cm[i, j]),
+        #              horizontalalignment="center",
+        #              color="white" if cm[i, j] > thresh else "black")
+        # else:
+        plt.text(j, i, "{:,}".format(cm[i, j]),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
 
     plt.grid(False)
     plt.tight_layout()
@@ -242,6 +241,36 @@ def generate_data_for_plot(three_weight: bool):
     for i in range(0,max):
         classes.append(str(i))
     return title, classes
+
+def calculate_evaluation_dictionaries(confusion_matrix: ndarray):
+    precisions = {}
+    recalls = {}
+    f1s = {}
+    size = confusion_matrix.shape[0]
+    for i in range(0,size):
+        correct = confusion_matrix[i][i]
+        if correct > 0:
+            precision = correct / sum(confusion_matrix[i,:])
+            recall = correct / sum(confusion_matrix[:,i])
+            f1 = (2 * precision * recall) / (precision + recall)
+
+            precisions.update({i: precision})
+            recalls.update({i: recall})
+            f1s.update({i:f1})
+        else:
+            precisions.update({i: 0})
+            recalls.update({i: 0})
+            f1s.update({i: 0})
+
+    #calculating macro score
+    macro_f1 = sum(f1s.values()) / size
+
+    return macro_f1, precisions, recalls, f1s
+
+
+
+
+
 
 
 
@@ -279,6 +308,7 @@ if __name__ == '__main__':
     calculate_accuracy(posterior, dev_rows, three)
     confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
     title, classes = generate_data_for_plot(three)
-    plot_confusion_matrix(confusion_matrix,target_names=classes, title= title,normalize= False)
+    plot_confusion_matrix(confusion_matrix,target_names=classes, title= title)
+    macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
 
     print("")
