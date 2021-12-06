@@ -3,6 +3,8 @@ from copy import deepcopy
 import struct
 
 # Housekeeping
+from typing import List, Dict
+
 MAP_TO_THREE_DICT = {'0': '0',
                      '1': '0',
                      '2': '1',
@@ -10,7 +12,7 @@ MAP_TO_THREE_DICT = {'0': '0',
                      '4': '2'}
 
 
-def read_and_store_tsv(fileName: str):
+def read_and_store_tsv(fileName: str) -> List[List[str]]:
     tsv_rows = []
     tsv_file = open(fileName)
     read_tsv_file = csv.reader(tsv_file, delimiter="\t")
@@ -20,7 +22,7 @@ def read_and_store_tsv(fileName: str):
     return tsv_rows
 
 
-def create_bag_of_words(rows: [str], three_weight):
+def create_bag_of_words(rows: list, three_weight: bool) -> dict:
     bagOfWords = {}
     for row in rows:
         sentence = row[1]
@@ -46,9 +48,8 @@ def create_bag_of_words(rows: [str], three_weight):
 
 # Model Creating
 
-def calculate_prior_probability(dataset_rows, three_weight):
+def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[int, float]:
     prior_probabilities = {}
-    max_range = 0
     if three_weight:
         max_range = 3
     else:
@@ -73,7 +74,7 @@ def laplace():
     pass
 
 
-def calculate_likelihood(bag_of_words, three_weight: bool):
+def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict,Dict[int, str]):
     local_bow = deepcopy(bag_of_words)
     if three_weight:
         max_range = 3
@@ -107,7 +108,8 @@ def calculate_likelihood(bag_of_words, three_weight: bool):
     return local_bow, class_counts
 
 
-def calculate_posterior_probability(prior_probabilities, likelihoods, class_counts, rows, three_weight):
+def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict,
+                                    class_counts: dict, rows: list, three_weight: bool) -> dict:
     classifications = {}
     for row in rows:
         sentence_id = row[0]
@@ -146,7 +148,7 @@ def calculate_posterior_probability(prior_probabilities, likelihoods, class_coun
 
 
 # evaluate can only be used on the dev set, where weights are given.
-def percentage_evaluate(classifications, dev_set, three_weight):
+def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_weight: bool) -> None:
     correct = 0
     total = len(classifications)
     if len(classifications) != len(dev_set):
@@ -162,6 +164,9 @@ def percentage_evaluate(classifications, dev_set, three_weight):
                 correct += 1
     percentage = (correct / total * 100)
     print(str(percentage) + "% correct")
+
+def calculate_confusion_matrix():
+    pass
 
 
 # This function will output the results of the posterior probability step using the results.
@@ -189,14 +194,11 @@ if __name__ == '__main__':
     bow = create_bag_of_words(rows, three)
     prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
-
     # Development
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
     # Evaluate (Development Only)
-    percentage_evaluate(posterior, dev_rows, three)
-
-    
+    calculate_accuracy(posterior, dev_rows, three)
 
     print("")
