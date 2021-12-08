@@ -1,9 +1,9 @@
-import csv;
+import csv
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
-import struct
+
 
 # Housekeeping
 from typing import List, Dict
@@ -17,14 +17,19 @@ MAP_TO_THREE_DICT = {'0': '0',
                      '4': '2'}
 
 
-def read_and_store_tsv(fileName: str) -> List[List[str]]:
+def read_and_store_tsv(file_name: str) -> List[List[str]]:
     tsv_rows = []
-    tsv_file = open(fileName)
+    tsv_file = open(file_name)
     read_tsv_file = csv.reader(tsv_file, delimiter="\t")
     for row in read_tsv_file:
         tsv_rows.append(row)
     tsv_rows.pop(0)
     return tsv_rows
+
+
+def preprocessing(bagOfWords: dict):
+
+    pass
 
 
 def create_bag_of_words(rows: list, three_weight: bool) -> dict:
@@ -49,7 +54,6 @@ def create_bag_of_words(rows: list, three_weight: bool) -> dict:
                 bagOfWords.update(dict)
 
     return bagOfWords
-
 
 # Model Creating
 
@@ -79,7 +83,7 @@ def laplace():
     pass
 
 
-def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict,Dict[int, str]):
+def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
     local_bow = deepcopy(bag_of_words)
     if three_weight:
         max_range = 3
@@ -172,19 +176,18 @@ def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_we
 
 
 def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], three_weight: bool) -> ndarray:
-
     if len(predictions) != len(dev_set):
         print("something went wrong.")
 
     if three_weight:
-        confusion_matrix = np.zeros((3,3))
+        confusion_matrix = np.zeros((3, 3))
         for item in dev_set:
             doc_id = item[0]
             correct_class = int(MAP_TO_THREE_DICT[item[2]])
             prediction = predictions[doc_id]
             confusion_matrix[correct_class][prediction] += 1
     else:
-        confusion_matrix = np.zeros((5,5))
+        confusion_matrix = np.zeros((5, 5))
         for item in dev_set:
             doc_id = item[0]
             correct_class = int(item[2])
@@ -192,8 +195,8 @@ def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], thre
             confusion_matrix[correct_class][prediction] += 1
     return confusion_matrix
 
-def plot_confusion_matrix(cm, target_names, title='Confusion matrix'):
 
+def plot_confusion_matrix(cm, target_names, title='Confusion matrix'):
     accuracy = np.trace(cm) / float(np.sum(cm))
     misclass = 1 - accuracy
     #
@@ -230,6 +233,7 @@ def plot_confusion_matrix(cm, target_names, title='Confusion matrix'):
     plt.xlabel('Predicted label\naccuracy={:0.4f}; misclass={:0.4f}'.format(accuracy, misclass))
     plt.show()
 
+
 def generate_data_for_plot(three_weight: bool):
     classes = []
     if three_weight:
@@ -238,40 +242,35 @@ def generate_data_for_plot(three_weight: bool):
     else:
         max = 5
         title = "Five Class Classifier"
-    for i in range(0,max):
+    for i in range(0, max):
         classes.append(str(i))
     return title, classes
+
 
 def calculate_evaluation_dictionaries(confusion_matrix: ndarray):
     precisions = {}
     recalls = {}
     f1s = {}
     size = confusion_matrix.shape[0]
-    for i in range(0,size):
+    for i in range(0, size):
         correct = confusion_matrix[i][i]
         if correct > 0:
-            precision = correct / sum(confusion_matrix[i,:])
-            recall = correct / sum(confusion_matrix[:,i])
+            precision = correct / sum(confusion_matrix[i, :])
+            recall = correct / sum(confusion_matrix[:, i])
             f1 = (2 * precision * recall) / (precision + recall)
 
             precisions.update({i: precision})
             recalls.update({i: recall})
-            f1s.update({i:f1})
+            f1s.update({i: f1})
         else:
             precisions.update({i: 0})
             recalls.update({i: 0})
             f1s.update({i: 0})
 
-    #calculating macro score
-    macro_f1 = sum(f1s.values()) / size
+    # calculating macro score
+    l_macro_f1 = sum(f1s.values()) / size
 
-    return macro_f1, precisions, recalls, f1s
-
-
-
-
-
-
+    return l_macro_f1, precisions, recalls, f1s
 
 
 # This function will output the results of the posterior probability step using the results.
@@ -303,12 +302,11 @@ if __name__ == '__main__':
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
-
     # Evaluate (Development Only)
     calculate_accuracy(posterior, dev_rows, three)
     confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
     title, classes = generate_data_for_plot(three)
-    plot_confusion_matrix(confusion_matrix,target_names=classes, title= title)
+    plot_confusion_matrix(confusion_matrix, target_names=classes, title=title)
     macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
 
     print("")
