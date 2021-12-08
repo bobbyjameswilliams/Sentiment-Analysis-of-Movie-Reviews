@@ -3,7 +3,11 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
+import re
+from nltk.stem import LancasterStemmer, PorterStemmer
 
+lancaster = LancasterStemmer()
+porter = PorterStemmer()
 
 # Housekeeping
 from typing import List, Dict
@@ -27,9 +31,22 @@ def read_and_store_tsv(file_name: str) -> List[List[str]]:
     return tsv_rows
 
 
-def preprocessing(word: str):
-
+def stemming():
     pass
+
+
+def stoplist():
+    pass
+
+
+def preprocessing(word: str):
+    if punc:
+        word = re.sub(r'[^\w\s]', '', word)
+        word = word.lower()
+    if stem:
+        word = porter.stem(word)
+        pass
+    return word
 
 
 def create_bag_of_words(rows: list, three_weight: bool) -> dict:
@@ -44,15 +61,16 @@ def create_bag_of_words(rows: list, three_weight: bool) -> dict:
         words = sentence.split(" ")
         for word in words:
             pp_word = preprocessing(word)
-            if pp_word in bagOfWords:
-                if s_class in bagOfWords[pp_word]:
-                    prevValue = bagOfWords[pp_word][s_class]
-                    bagOfWords[pp_word][s_class] = (prevValue + 1)
+            if pp_word != "":
+                if pp_word in bagOfWords:
+                    if s_class in bagOfWords[pp_word]:
+                        prevValue = bagOfWords[pp_word][s_class]
+                        bagOfWords[pp_word][s_class] = (prevValue + 1)
+                    else:
+                        bagOfWords[pp_word].update({s_class: 1})
                 else:
-                    bagOfWords[pp_word].update({s_class: 1})
-            else:
-                dict = {pp_word: {s_class: 1}}
-                bagOfWords.update(dict)
+                    dict = {pp_word: {s_class: 1}}
+                    bagOfWords.update(dict)
 
     return bagOfWords
 
@@ -79,10 +97,6 @@ def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[
                     class_count += 1
         prior_probabilities.update({i: (class_count / dataset_size)})
     return prior_probabilities
-
-
-def laplace():
-    pass
 
 
 def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
@@ -143,15 +157,17 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
         # calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
         # weight attached.
         for word in sentence:
-            for i in range(0, max_range):
-                # this condition down here is looking to be the problem
-                str_i = str(i)
-                if (word in likelihoods) and (str_i in likelihoods[word]):
-                    # print("it got here")
-                    # prev_val = classes[i]
-                    classes[i] *= likelihoods[word][str_i]
-                else:
-                    classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
+            pp_word = preprocessing(word)
+            if pp_word != "":
+                for i in range(0, max_range):
+                    # this condition down here is looking to be the problem
+                    str_i = str(i)
+                    if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]):
+                        # print("it got here")
+                        # prev_val = classes[i]
+                        classes[i] *= likelihoods[pp_word][str_i]
+                    else:
+                        classes[i] *= (1 / (class_counts[str(i)] + len(likelihoods)))
 
         classification = max(classes, key=classes.get)
         classifications.update({sentence_id: classification})
@@ -240,10 +256,10 @@ def generate_data_for_plot(three_weight: bool):
     classes = []
     if three_weight:
         max = 3
-        title = "Three Class Classifier"
+        title = ("Three Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc))
     else:
         max = 5
-        title = "Five Class Classifier"
+        title = ("Five Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc))
     for i in range(0, max):
         classes.append(str(i))
     return title, classes
@@ -275,28 +291,23 @@ def calculate_evaluation_dictionaries(confusion_matrix: ndarray):
     return l_macro_f1, precisions, recalls, f1s
 
 
+def create_stoplist(stop_bag_of_words: dict, k: int):
+    sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
+    sorted_list = np.array(sorted_dict)
+    stop_list = sorted_list[:k,0]
+    return stop_list
+
 # This function will output the results of the posterior probability step using the results.
 def output_classification():
     pass
 
 
-# PREPROCESSING ################################################################
-def stemming(sentence):
-    stemmed_sentence = None
-    return stemmed_sentence
-
-
-def stop_list(sentence):
-    stop_list_sentence = None
-    return stop_list_sentence
-
-
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
-    #Preprocessing Booleans
+    # Preprocessing Booleans
 
     stem = False
-    stop = False
+    punc = True
 
     three: bool = False
 
@@ -309,6 +320,7 @@ if __name__ == '__main__':
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
 
+    stop_list = create_stoplist(bow,6)
     # Evaluate (Development Only)
     calculate_accuracy(posterior, dev_rows, three)
     confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
@@ -316,4 +328,6 @@ if __name__ == '__main__':
     plot_confusion_matrix(confusion_matrix, target_names=classes, title=title)
     macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
 
+
+    print(macro_f1)
     print("")
