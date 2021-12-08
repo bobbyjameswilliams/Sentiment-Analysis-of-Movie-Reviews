@@ -43,6 +43,7 @@ def preprocessing(word: str):
     if punc:
         word = re.sub(r'[^\w\s]', '', word)
         word = word.lower()
+        word = word.strip()
     if stem:
         word = porter.stem(word)
         pass
@@ -306,12 +307,12 @@ if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
     # Preprocessing Booleans
 
-    stem = False    
-    punc = False
+    stem = True
+    punc = True
     #stop list, 0 for no stop list
-    stop_k = 0
+    stop_k = 4
 
-    three: bool = True
+    three: bool = False
 
     # Training
     rows = read_and_store_tsv(dataset_names[0])
