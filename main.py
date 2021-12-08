@@ -27,7 +27,7 @@ def read_and_store_tsv(file_name: str) -> List[List[str]]:
     return tsv_rows
 
 
-def preprocessing(bagOfWords: dict):
+def preprocessing(word: str):
 
     pass
 
@@ -43,17 +43,19 @@ def create_bag_of_words(rows: list, three_weight: bool) -> dict:
 
         words = sentence.split(" ")
         for word in words:
-            if word in bagOfWords:
-                if s_class in bagOfWords[word]:
-                    prevValue = bagOfWords[word][s_class]
-                    bagOfWords[word][s_class] = (prevValue + 1)
+            pp_word = preprocessing(word)
+            if pp_word in bagOfWords:
+                if s_class in bagOfWords[pp_word]:
+                    prevValue = bagOfWords[pp_word][s_class]
+                    bagOfWords[pp_word][s_class] = (prevValue + 1)
                 else:
-                    bagOfWords[word].update({s_class: 1})
+                    bagOfWords[pp_word].update({s_class: 1})
             else:
-                dict = {word: {s_class: 1}}
+                dict = {pp_word: {s_class: 1}}
                 bagOfWords.update(dict)
 
     return bagOfWords
+
 
 # Model Creating
 
@@ -291,6 +293,11 @@ def stop_list(sentence):
 
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
+    #Preprocessing Booleans
+
+    stem = False
+    stop = False
+
     three: bool = False
 
     # Training
