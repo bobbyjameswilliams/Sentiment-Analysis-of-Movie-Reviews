@@ -134,7 +134,7 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
 
 
 def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict,
-                                    class_counts: dict, rows: list, three_weight: bool) -> dict:
+                                    class_counts: dict, rows: list, three_weight: bool, stop_list: ndarray) -> dict:
     classifications = {}
     for row in rows:
         sentence_id = row[0]
@@ -158,11 +158,11 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
         # weight attached.
         for word in sentence:
             pp_word = preprocessing(word)
-            if pp_word != "":
+            if (pp_word != ""):
                 for i in range(0, max_range):
                     # this condition down here is looking to be the problem
                     str_i = str(i)
-                    if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]):
+                    if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]) and (pp_word not in stop_list):
                         # print("it got here")
                         # prev_val = classes[i]
                         classes[i] *= likelihoods[pp_word][str_i]
@@ -306,10 +306,12 @@ if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
     # Preprocessing Booleans
 
-    stem = False
-    punc = True
+    stem = False    
+    punc = False
+    #stop list, 0 for no stop list
+    stop_k = 0
 
-    three: bool = False
+    three: bool = True
 
     # Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -317,17 +319,16 @@ if __name__ == '__main__':
     prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
     # Development
+    stop_list = create_stoplist(bow,stop_k)
     dev_rows = read_and_store_tsv(dataset_names[1])
-    posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three)
+    posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three, stop_list)
 
-    stop_list = create_stoplist(bow,6)
     # Evaluate (Development Only)
     calculate_accuracy(posterior, dev_rows, three)
     confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
     title, classes = generate_data_for_plot(three)
     plot_confusion_matrix(confusion_matrix, target_names=classes, title=title)
     macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
-
 
     print(macro_f1)
     print("")
