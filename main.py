@@ -1,4 +1,5 @@
 import csv
+import os
 from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,14 +12,14 @@ from numpy import ndarray
 lancaster = LancasterStemmer()
 porter = PorterStemmer()
 
-# Housekeeping
-
+# Maps 5 class to 3 class
 MAP_TO_THREE_DICT = {'0': '0',
                      '1': '0',
                      '2': '1',
                      '3': '2',
                      '4': '2'}
 
+""" DATA PREPARATION AND HANDLING """
 
 def read_and_store_tsv(file_name: str) -> List[List[str]]:
     tsv_rows = []
@@ -28,29 +29,6 @@ def read_and_store_tsv(file_name: str) -> List[List[str]]:
         tsv_rows.append(row)
     tsv_rows.pop(0)
     return tsv_rows
-
-
-def stemming():
-    pass
-
-
-def stoplist():
-    pass
-
-
-def preprocessing(word: str):
-    if punc:
-        # word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
-        word = re.sub(r'[^\w\s]', '', word)
-        word = word.strip()
-    if lower:
-        word = word.lower()
-
-    if stem:
-        word = porter.stem(word)
-        pass
-    return word
-
 
 def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
     bag_of_words = {}
@@ -72,13 +50,45 @@ def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
                     else:
                         bag_of_words[pp_word].update({s_class: 1})
                 else:
-                    dict = {pp_word: {s_class: 1}}
-                    bag_of_words.update(dict)
+                    dictionary = {pp_word: {s_class: 1}}
+                    bag_of_words.update(dictionary)
 
     return bag_of_words
 
+def output_to_tsv(classifications):
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    file_path = ROOT_DIR + "/submission_test.tsv"
+    with open(file_path, 'wt') as out_file:
+        tsv_writer = csv.writer(out_file, delimiter='\t')
+        for document in classifications:
+            doc_id = document
+            classification = classifications[document]
+            tsv_writer.writerow([doc_id, classification])
 
-# Model Creating
+
+""" PREPROCESSING AND FEATURE SELECTION """
+def preprocessing(word: str):
+    if punc:
+        # word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
+        word = re.sub(r'[^\w\s]', '', word)
+        word = word.strip()
+    if lower:
+        word = word.lower()
+
+    if stem:
+        word = porter.stem(word)
+        pass
+    return word
+
+# Creates a stoplist by removing the top most occurring words.
+def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
+    sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
+    sorted_list = np.array(sorted_dict)
+    s_list = sorted_list[:k, 0]
+
+    return s_list
+
+""" MODEL CREATING """
 
 def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[int, float]:
     prior_probabilities = {}
@@ -102,8 +112,8 @@ def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[
     return prior_probabilities
 
 
-def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
-    local_bow = deepcopy(bag_of_words)
+# Likelihood
+def prepare_c_counts(three_weight: bool):
     if three_weight:
         # var below counts the occurrances of each class.
         c_counts = {
@@ -117,12 +127,21 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
             "2": 0,
             "3": 0,
             "4": 0}
-    # TODO: put this in another function
+    return c_counts
+
+
+def calculate_class_counts(c_counts: dict, bag_of_words: dict) -> dict:
     for word in bag_of_words:
         associated_sentiments = bag_of_words[word]
         for sentiment_class in associated_sentiments:
             count = c_counts[sentiment_class] + associated_sentiments[sentiment_class]
             c_counts.update({sentiment_class: count})
+    return c_counts
+
+
+def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
+    local_bow = deepcopy(bag_of_words)
+    c_counts = calculate_class_counts(prepare_c_counts(three_weight), bag_of_words)
 
     for word in local_bow:
         local_associated_sentiments = local_bow[word]
@@ -137,8 +156,9 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
                 local_associated_sentiments[sentiment_class] = temp_count / class_total
     return local_bow, c_counts
 
+""" CLASSIFICATION """
 
-def classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list):
+def classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list) -> int:
     sentence = sentence.split(" ")
     if three_weight:
         l_classes = {
@@ -186,6 +206,9 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
     return classifications
 
 
+
+"""" EVALUATION FUNCTIONS """
+
 # evaluate can only be used on the dev set, where weights are given.
 def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_weight: bool) -> None:
     correct = 0
@@ -229,10 +252,6 @@ def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], thre
 def plot_confusion_matrix(cm, target_names, t='Confusion matrix'):
     accuracy = np.trace(cm) / float(np.sum(cm))
     misclass = 1 - accuracy
-    #
-    # if normalize:
-    #     cm = cm.astype('float') / cm.sum()
-    #
 
     cmap = plt.get_cmap('Blues')
 
@@ -303,24 +322,14 @@ def calculate_evaluation_dictionaries(cm: ndarray):
     return l_macro_f1, precisions_dict, recalls_dict, f1s_dict
 
 
-# Creates a stoplist by removing the top most occurring words.
-def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
-    sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
-    sorted_list = np.array(sorted_dict)
-    s_list = sorted_list[:k, 0]
-
-    return s_list
-
-
-# This function will output the results of the posterior probability step using the results.
-def output_classification():
-    pass
-
-
 if __name__ == '__main__':
-    dataset_names = ("train.tsv", "dev.tsv")
+    """ CONFIG BOOLEANS """
+    # set to true if using a dev set. false if just classifying
+    dev = False
+    # Set to true to output results to CSV
+    output = True
 
-    # Laplace boolean
+    # Laplace Smoothing
     laplace = True
 
     # Preprocessing Booleans
@@ -334,6 +343,14 @@ if __name__ == '__main__':
 
     # True for 3 classes. False for 5
     three: bool = True
+    """" END CONFIG BOOLEANS """
+
+
+    # Preparation of dataset names
+    if dev:
+        dataset_names = ("train.tsv", "dev.tsv")
+    else:
+        dataset_names = ("train.tsv", "test.tsv")
 
     # Training
     rows = read_and_store_tsv(dataset_names[0])
@@ -342,17 +359,23 @@ if __name__ == '__main__':
     likelihood, class_counts = calculate_likelihood(bow, three)
     # Development
 
+    # parametrised Zipfs law stoplist
     stop_list = create_zipf_stoplist(bow, zipf_stop_k)
 
-    dev_rows = read_and_store_tsv(dataset_names[1])
-    posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three, stop_list)
+    # rows that are to be classified
+    classification_rows = read_and_store_tsv(dataset_names[1])
+    classifications = calculate_posterior_probability(prior_probability, likelihood, class_counts, classification_rows, three,
+                                                      stop_list)
+    if dev:
+        # Evaluate (Development Only)
+        calculate_accuracy(classifications, classification_rows, three)
+        confusion_matrix = calculate_confusion_matrix(classifications, classification_rows, three)
+        title, classes = generate_data_for_plot(three)
+        plot_confusion_matrix(confusion_matrix, target_names=classes, t=title)
+        macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
+        print(macro_f1)
 
-    # Evaluate (Development Only)
-    calculate_accuracy(posterior, dev_rows, three)
-    confusion_matrix = calculate_confusion_matrix(posterior, dev_rows, three)
-    title, classes = generate_data_for_plot(three)
-    plot_confusion_matrix(confusion_matrix, target_names=classes, t=title)
-    macro_f1, precisions, recalls, f1s = calculate_evaluation_dictionaries(confusion_matrix)
+    if output:
+        output_to_tsv(classifications)
 
-    print(macro_f1)
     print("")
