@@ -168,7 +168,7 @@ def classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, 
                     l_classes[i] *= likelihoods[pp_word][str_i]
                 else:
                     l_classes[i] *= (1 / (c_counts[str(i)] + len(likelihoods)))
-    return l_classes
+    return max(l_classes, key=l_classes.get)
 
 
 
@@ -178,9 +178,8 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
     for row in c_rows:
         sentence_id = row[0]
         sentence = row[1]
-        l_classes = classify_sentence(sentence,likelihoods,prior_probabilities,three_weight, c_counts, s_list)
+        classification = classify_sentence(sentence,likelihoods,prior_probabilities,three_weight, c_counts, s_list)
 
-        classification = max(l_classes, key=l_classes.get)
         classifications.update({sentence_id: classification})
     return classifications
 
@@ -322,7 +321,7 @@ if __name__ == '__main__':
     stem = True
     punc = True
     # stop list, 0 for no stop list
-    zipf_stop_k = 5
+    zipf_stop_k = 0
     standard_stop_list = False
 
     three: bool = True
