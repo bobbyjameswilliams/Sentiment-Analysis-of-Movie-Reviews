@@ -56,7 +56,18 @@ def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
     return bag_of_words
 
 def output_to_tsv(classifications: dict, three_weight: bool):
-    file_path = "./submission_test.tsv"
+
+    if dev:
+        set_spec = "dev"
+    else:
+        set_spec = "test"
+
+    if three_weight:
+        class_spec = "3classes"
+    else:
+        class_spec = "5classes"
+
+    file_path = "./{}_predictions_{}_Bobby_WILLIAMS.tsv".format(set_spec,class_spec)
     with open(file_path, 'wt') as out_file:
         out_file.write("SentenceId" + "\t" + "Sentiment" + "\n")
         for document in classifications:
@@ -374,5 +385,3 @@ if __name__ == '__main__':
 
     if output:
         output_to_tsv(classifications, three)
-
-    print("")
