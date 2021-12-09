@@ -41,6 +41,7 @@ def stoplist():
 
 def preprocessing(word: str):
     if punc:
+        #word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
         word = re.sub(r'[^\w\s]', '', word)
         word = word.lower()
         word = word.strip()
@@ -136,44 +137,50 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
     return local_bow, c_counts
 
 
+def classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list):
+    sentence = sentence.split(" ")
+    if three_weight:
+        l_classes = {
+            0: prior_probabilities[0],
+            1: prior_probabilities[1],
+            2: prior_probabilities[2]}
+        max_range = 3
+    else:
+        l_classes = {
+            0: prior_probabilities[0],
+            1: prior_probabilities[1],
+            2: prior_probabilities[2],
+            3: prior_probabilities[3],
+            4: prior_probabilities[4]
+        }
+        max_range = 5
+    # calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
+    # weight attached.
+    for word in sentence:
+        pp_word = preprocessing(word)
+        if (pp_word != ""):
+            for i in range(0, max_range):
+                # this condition down here is looking to be the problem
+                str_i = str(i)
+                if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]) and (pp_word not in s_list):
+                    # print("it got here")
+                    # prev_val = classes[i]
+                    l_classes[i] *= likelihoods[pp_word][str_i]
+                else:
+                    l_classes[i] *= (1 / (c_counts[str(i)] + len(likelihoods)))
+    return l_classes
+
+
+
 def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict,
                                     c_counts: dict, c_rows: list, three_weight: bool, s_list: ndarray) -> dict:
     classifications = {}
     for row in c_rows:
         sentence_id = row[0]
         sentence = row[1]
-        sentence = sentence.split(" ")
-        if three_weight:
-            cs ={
-                0: prior_probabilities[0],
-                1: prior_probabilities[1],
-                2: prior_probabilities[2]}
-            max_range = 3
-        else:
-            cs = {
-                0: prior_probabilities[0],
-                1: prior_probabilities[1],
-                2: prior_probabilities[2],
-                3: prior_probabilities[3],
-                4: prior_probabilities[4]
-            }
-            max_range = 5
-        # calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
-        # weight attached.
-        for word in sentence:
-            pp_word = preprocessing(word)
-            if (pp_word != ""):
-                for i in range(0, max_range):
-                    # this condition down here is looking to be the problem
-                    str_i = str(i)
-                    if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]) and (pp_word not in s_list):
-                        # print("it got here")
-                        # prev_val = classes[i]
-                        cs[i] *= likelihoods[pp_word][str_i]
-                    else:
-                        cs[i] *= (1 / (c_counts[str(i)] + len(likelihoods)))
+        l_classes = classify_sentence(sentence,likelihoods,prior_probabilities,three_weight, c_counts, s_list)
 
-        classification = max(cs, key=cs.get)
+        classification = max(l_classes, key=l_classes.get)
         classifications.update({sentence_id: classification})
     return classifications
 
@@ -300,6 +307,7 @@ def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
     sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
     sorted_list = np.array(sorted_dict)
     s_list = sorted_list[:k,0]
+
     return s_list
 
 # This function will output the results of the posterior probability step using the results.
@@ -314,7 +322,8 @@ if __name__ == '__main__':
     stem = True
     punc = True
     # stop list, 0 for no stop list
-    zipf_stop_k = 0
+    zipf_stop_k = 5
+    standard_stop_list = False
 
     three: bool = True
 
@@ -324,7 +333,11 @@ if __name__ == '__main__':
     prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
     # Development
-    stop_list = create_zipf_stoplist(bow, zipf_stop_k)
+    if standard_stop_list == True:
+        pass
+    else:
+        stop_list = create_zipf_stoplist(bow, zipf_stop_k)
+
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three, stop_list)
 
