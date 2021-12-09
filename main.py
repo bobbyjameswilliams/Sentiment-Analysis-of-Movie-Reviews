@@ -8,7 +8,6 @@ from nltk.stem import LancasterStemmer, PorterStemmer
 from typing import List, Dict
 from numpy import ndarray
 
-
 lancaster = LancasterStemmer()
 porter = PorterStemmer()
 
@@ -41,7 +40,7 @@ def stoplist():
 
 def preprocessing(word: str):
     if punc:
-        #word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
+        # word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
         word = re.sub(r'[^\w\s]', '', word)
         word = word.lower()
         word = word.strip()
@@ -104,20 +103,18 @@ def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[
 def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
     local_bow = deepcopy(bag_of_words)
     if three_weight:
-        max_range = 3
         # var below counts the occurrances of each class.
         c_counts = {
-                    "0": 0,
-                    "1": 0,
-                    "2": 0}
+            "0": 0,
+            "1": 0,
+            "2": 0}
     else:
-        max_range = 5
         c_counts = {
-                    "0": 0,
-                    "1": 0,
-                    "2": 0,
-                    "3": 0,
-                    "4": 0}
+            "0": 0,
+            "1": 0,
+            "2": 0,
+            "3": 0,
+            "4": 0}
     # TODO: put this in another function
     for word in bag_of_words:
         associated_sentiments = bag_of_words[word]
@@ -130,10 +127,12 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
         for sentiment_class in local_associated_sentiments:
             temp_count = local_associated_sentiments[sentiment_class]
             class_total = c_counts[sentiment_class]
-            # with laplace smoothing
-            local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
-            # without laplace smoothing
-            # local_associated_sentiments[sentiment_class] = temp_count / class_total
+            # Performs laplace smoothing if true. Laplace smoothing is applied in the likelihoods and again in classify
+            # for 0 values.
+            if laplace:
+                local_associated_sentiments[sentiment_class] = (temp_count + 1) / (class_total + len(local_bow))
+            else:
+                local_associated_sentiments[sentiment_class] = temp_count / class_total
     return local_bow, c_counts
 
 
@@ -160,16 +159,17 @@ def classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, 
         pp_word = preprocessing(word)
         if (pp_word != ""):
             for i in range(0, max_range):
-                # this condition down here is looking to be the problem
                 str_i = str(i)
                 if (pp_word in likelihoods) and (str_i in likelihoods[pp_word]) and (pp_word not in s_list):
-                    # print("it got here")
-                    # prev_val = classes[i]
                     l_classes[i] *= likelihoods[pp_word][str_i]
                 else:
-                    l_classes[i] *= (1 / (c_counts[str(i)] + len(likelihoods)))
-    return max(l_classes, key=l_classes.get)
+                    # Performs laplace smoothing if laplace is true
+                    if laplace:
+                        l_classes[i] *= (1 / (c_counts[str(i)] + len(likelihoods)))
+                    else:
+                        l_classes[i] *= 0
 
+    return max(l_classes, key=l_classes.get)
 
 
 def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict,
@@ -178,7 +178,7 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
     for row in c_rows:
         sentence_id = row[0]
         sentence = row[1]
-        classification = classify_sentence(sentence,likelihoods,prior_probabilities,three_weight, c_counts, s_list)
+        classification = classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list)
 
         classifications.update({sentence_id: classification})
     return classifications
@@ -301,13 +301,14 @@ def calculate_evaluation_dictionaries(cm: ndarray):
     return l_macro_f1, precisions_dict, recalls_dict, f1s_dict
 
 
-#Creates a stoplist by removing the top most occurring words.
+# Creates a stoplist by removing the top most occurring words.
 def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
     sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
     sorted_list = np.array(sorted_dict)
-    s_list = sorted_list[:k,0]
+    s_list = sorted_list[:k, 0]
 
     return s_list
+
 
 # This function will output the results of the posterior probability step using the results.
 def output_classification():
@@ -316,14 +317,19 @@ def output_classification():
 
 if __name__ == '__main__':
     dataset_names = ("train.tsv", "dev.tsv")
-    # Preprocessing Booleans
 
+    # Laplace boolean
+    laplace = True
+
+    # Preprocessing Booleans
     stem = True
     punc = True
-    # stop list, 0 for no stop list
-    zipf_stop_k = 0
-    standard_stop_list = False
 
+    # Feature Selection Parameters
+    # Stop list, 0 for no stop list
+    zipf_stop_k = 0
+
+    # True for 3 classes. False for 5
     three: bool = True
 
     # Training
@@ -332,10 +338,8 @@ if __name__ == '__main__':
     prior_probability = calculate_prior_probability(rows, three)
     likelihood, class_counts = calculate_likelihood(bow, three)
     # Development
-    if standard_stop_list == True:
-        pass
-    else:
-        stop_list = create_zipf_stoplist(bow, zipf_stop_k)
+
+    stop_list = create_zipf_stoplist(bow, zipf_stop_k)
 
     dev_rows = read_and_store_tsv(dataset_names[1])
     posterior = calculate_posterior_probability(prior_probability, likelihood, class_counts, dev_rows, three, stop_list)
