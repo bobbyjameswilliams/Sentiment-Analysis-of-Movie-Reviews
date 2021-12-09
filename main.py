@@ -42,8 +42,10 @@ def preprocessing(word: str):
     if punc:
         # word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
         word = re.sub(r'[^\w\s]', '', word)
-        word = word.lower()
         word = word.strip()
+    if lower:
+        word = word.lower()
+
     if stem:
         word = porter.stem(word)
         pass
@@ -324,6 +326,7 @@ if __name__ == '__main__':
     # Preprocessing Booleans
     stem = True
     punc = True
+    lower = True
 
     # Feature Selection Parameters
     # Stop list, 0 for no stop list
