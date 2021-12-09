@@ -55,26 +55,23 @@ def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
 
     return bag_of_words
 
-def output_to_tsv(classifications):
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    file_path = ROOT_DIR + "/submission_test.tsv"
+def output_to_tsv(classifications: dict, three_weight: bool):
+    file_path = "./submission_test.tsv"
     with open(file_path, 'wt') as out_file:
-        tsv_writer = csv.writer(out_file, delimiter='\t')
+        out_file.write("SentenceId" + "\t" + "Sentiment" + "\n")
         for document in classifications:
             doc_id = document
             classification = classifications[document]
-            tsv_writer.writerow([doc_id, classification])
+            out_file.write(str(doc_id)+"\t"+str(classification)+"\n")
 
 
 """ PREPROCESSING AND FEATURE SELECTION """
 def preprocessing(word: str):
     if punc:
-        # word = re.sub(r"[a-zA-Z0-9]+", lambda x: x.group(0).lower(), word)
         word = re.sub(r'[^\w\s]', '', word)
         word = word.strip()
     if lower:
         word = word.lower()
-
     if stem:
         word = porter.stem(word)
         pass
@@ -376,6 +373,6 @@ if __name__ == '__main__':
         print(macro_f1)
 
     if output:
-        output_to_tsv(classifications)
+        output_to_tsv(classifications, three)
 
     print("")
