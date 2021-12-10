@@ -307,10 +307,10 @@ def generate_data_for_plot(three_weight: bool) -> (str, list[str]):
     classes_list = []
     if three_weight:
         max_int = 3
-        t = ("Three Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc))
+        t = ("Three Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc)+ ", Lower="+str(lower))
     else:
         max_int = 5
-        t = ("Five Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc))
+        t = ("Five Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc)+ ", Lower="+str(lower))
     for i in range(0, max_int):
         classes_list.append(str(i))
     return t, classes_list
@@ -345,9 +345,9 @@ def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int],  d
 if __name__ == '__main__':
     """ CONFIG BOOLEANS """
     # set to true if using a dev set. false if just classifying
-    dev = False
+    dev = True
     # Set to true to output results to CSV
-    output = True
+    output = False
 
     # Laplace Smoothing
     laplace = True
@@ -359,10 +359,10 @@ if __name__ == '__main__':
 
     # Feature Selection Parameters
     # Stop list, 0 for no stop list
-    zipf_stop_k = 0
+    zipf_stop_k = 3
 
     # True for 3 classes. False for 5
-    three: bool = True
+    three: bool = False
     """" END CONFIG BOOLEANS """
 
     # Preparation of dataset names
