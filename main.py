@@ -66,6 +66,12 @@ def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
 
 
 def output_to_tsv(classifications: dict, three_weight: bool) -> None:
+    """
+    outputs the results to a tsv file
+    :param classifications: doc ids and their classifications
+    :param three_weight: true if 3 classes
+    :return:
+    """
     if dev:
         set_spec = "dev"
     else:
@@ -89,6 +95,11 @@ def output_to_tsv(classifications: dict, three_weight: bool) -> None:
 
 
 def preprocessing(word: str) -> str:
+    """
+    Toggles the preprocessing applied to the words.
+    :param word: word to be processed
+    :return: peprocessed word
+    """
     if punc:
         word = re.sub(r'[^\w\s]', '', word)
         word = word.strip()
@@ -102,6 +113,12 @@ def preprocessing(word: str) -> str:
 
 # Creates a stoplist by removing the top most occurring words.
 def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
+    """
+    creates a stoplist using Zipf's law, removing most common words
+    :param stop_bag_of_words: bag of words
+    :param k: number of most popular words to be removed
+    :return: stop list
+    """
     sorted_dict = np.array(sorted(stop_bag_of_words.items(), key=lambda x: sum(x[1].values()), reverse=True))
     sorted_list = np.array(sorted_dict)
     s_list = sorted_list[:k, 0]
@@ -113,6 +130,12 @@ def create_zipf_stoplist(stop_bag_of_words: dict, k: int):
 
 
 def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[int, float]:
+    """
+    calculates the prior probability and classifies
+    :param dataset_rows: sentences to be classified
+    :param three_weight: true if 3 classes
+    :return: classifications dict with sentence ids and classifications
+    """
     prior_probabilities = {}
     if three_weight:
         max_range = 3
@@ -136,6 +159,11 @@ def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[
 
 # Likelihood
 def prepare_c_counts(three_weight: bool) -> dict[str, int]:
+    """
+    returns a dict depending on how many classes are being used
+    :param three_weight: true if 3 classes used
+    :return: returns dict of the classes initialised as 0
+    """
     if three_weight:
         # var below counts the occurrances of each class.
         c_counts = {
@@ -153,6 +181,12 @@ def prepare_c_counts(three_weight: bool) -> dict[str, int]:
 
 
 def calculate_class_counts(c_counts: dict, bag_of_words: dict) -> dict:
+    """
+    Counts the classes occurrences in the training dataset
+    :param c_counts: prepepared dict for class counts
+    :param bag_of_words: bag of words from training set
+    :return: dict of the classes and how many times they occur
+    """
     for word in bag_of_words:
         associated_sentiments = bag_of_words[word]
         for sentiment_class in associated_sentiments:
@@ -162,6 +196,12 @@ def calculate_class_counts(c_counts: dict, bag_of_words: dict) -> dict:
 
 
 def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[int, str]):
+    """
+    Calculates the likelihood and returns a dict of them
+    :param bag_of_words: bag of words from training set
+    :param three_weight: true if 3 weights used
+    :return: dict of likelihoods
+    """
     local_bow = deepcopy(bag_of_words)
     c_counts = calculate_class_counts(prepare_c_counts(three_weight), bag_of_words)
 
@@ -184,6 +224,16 @@ def calculate_likelihood(bag_of_words: dict, three_weight: bool) -> (dict, Dict[
 
 def classify_sentence(sentence: str, likelihoods: dict, prior_probabilities: dict, three_weight: bool, c_counts: dict,
                       s_list: ndarray) -> int:
+    """
+    given a sentence and the related information, returns classification
+    :param sentence: sentence for classification
+    :param likelihoods: likelihoods
+    :param prior_probabilities: probabilities
+    :param three_weight: true if 3 classes used
+    :param c_counts: dict of classes and their total occurrances
+    :param s_list: stop list
+    :return: integer classification
+    """
     sentence = sentence.split(" ")
     if three_weight:
         l_classes = {
@@ -221,6 +271,16 @@ def classify_sentence(sentence: str, likelihoods: dict, prior_probabilities: dic
 
 def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict,
                                     c_counts: dict, c_rows: list, three_weight: bool, s_list: ndarray) -> dict:
+    """
+    calculates the posterior probability and classifies the sentence, returning the classifications in a dict.
+    :param prior_probabilities: prior probabilities
+    :param likelihoods: likelihoods
+    :param c_counts: class counts dict
+    :param c_rows: class rows
+    :param three_weight: true if 3 classes used
+    :param s_list: stop list
+    :return: a dict of classificatons sentenceid: classification
+    """
     classifications = {}
     for row in c_rows:
         sentence_id = row[0]
@@ -236,6 +296,13 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
 
 # evaluate can only be used on the dev set, where weights are given.
 def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_weight: bool) -> None:
+    """
+    calculates accuracy if dev set is used
+    :param classifications: created using the model
+    :param dev_set: dev set
+    :param three_weight: true if 3 classes used
+    :return: None. Outputs to console.
+    """
     correct = 0
     total = len(classifications)
     if len(classifications) != len(dev_set):
@@ -254,6 +321,13 @@ def calculate_accuracy(classifications: dict, dev_set: List[List[str]], three_we
 
 
 def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], three_weight: bool) -> ndarray:
+    """
+    creates confusion matrix based on the data.
+    :param predictions: predictions made from your own classification step
+    :param dev_set: dev set
+    :param three_weight: true if 3 weights used
+    :return: returns confusion matrix
+    """
     if len(predictions) != len(dev_set):
         print("something went wrong.")
 
@@ -275,6 +349,13 @@ def calculate_confusion_matrix(predictions: dict, dev_set: List[List[str]], thre
 
 
 def plot_confusion_matrix(cm, target_names, t='Confusion matrix') -> None:
+    """
+    plots confusion matrix. Adapted from the lab class.
+    :param cm: confusion matrix
+    :param target_names: list of classes
+    :param t: title
+    :return: None
+    """
     accuracy = np.trace(cm) / float(np.sum(cm))
     misclass = 1 - accuracy
 
@@ -304,6 +385,11 @@ def plot_confusion_matrix(cm, target_names, t='Confusion matrix') -> None:
 
 
 def generate_data_for_plot(three_weight: bool) -> (str, list[str]):
+    """
+    prepares data for the plot
+    :param three_weight: true if 3 weights used
+    :return: title and list of classes
+    """
     classes_list = []
     if three_weight:
         max_int = 3
@@ -317,6 +403,11 @@ def generate_data_for_plot(three_weight: bool) -> (str, list[str]):
 
 
 def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int],  dict[int, int],  dict[int, int]):
+    """
+    creates dictionaries for evaluation to calculate F1
+    :param cm: confusion matrix
+    :return: l_macro_f1, precisions_dict, recalls_dict, f1s_dict
+    """
     precisions_dict = {}
     recalls_dict = {}
     f1s_dict = {}
@@ -354,15 +445,15 @@ if __name__ == '__main__':
 
     # Preprocessing Booleans
     stem = True
-    punc = True
-    lower = True
+    punc = False
+    lower = False
 
     # Feature Selection Parameters
     # Stop list, 0 for no stop list
-    zipf_stop_k = 3
+    zipf_stop_k = 2
 
     # True for 3 classes. False for 5
-    three: bool = False
+    three: bool = True
     """" END CONFIG BOOLEANS """
 
     # Preparation of dataset names
