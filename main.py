@@ -50,6 +50,7 @@ def create_bag_of_words(c_rows: list, three_weight: bool) -> dict:
 
         words = sentence.split(" ")
         for word in words:
+            # applies preprocessing
             pp_word = preprocessing(word)
             if pp_word != "":
                 if pp_word in bag_of_words:
@@ -253,6 +254,7 @@ def classify_sentence(sentence: str, likelihoods: dict, prior_probabilities: dic
     # calculation includes laplace smoothing if the word does not appear in the likelihoods or is there but has no
     # weight attached.
     for word in sentence:
+        # applies preprocessing
         pp_word = preprocessing(word)
         if (pp_word != ""):
             for i in range(0, max_range):
@@ -393,16 +395,16 @@ def generate_data_for_plot(three_weight: bool) -> (str, list[str]):
     classes_list = []
     if three_weight:
         max_int = 3
-        t = ("Three Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc)+ ", Lower="+str(lower))
+        t = ("Three Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc) + ", Lower=" + str(lower))
     else:
         max_int = 5
-        t = ("Five Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc)+ ", Lower="+str(lower))
+        t = ("Five Class Classifier" + ", Stem=" + str(stem) + ", Punc=" + str(punc) + ", Lower=" + str(lower))
     for i in range(0, max_int):
         classes_list.append(str(i))
     return t, classes_list
 
 
-def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int],  dict[int, int],  dict[int, int]):
+def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int], dict[int, int], dict[int, int]):
     """
     creates dictionaries for evaluation to calculate F1
     :param cm: confusion matrix
@@ -414,6 +416,7 @@ def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int],  d
     size = cm.shape[0]
     for i in range(0, size):
         correct = cm[i][i]
+        # cannot divide by 0
         if correct > 0:
             precision = correct / sum(cm[i, :])
             recall = correct / sum(cm[:, i])
