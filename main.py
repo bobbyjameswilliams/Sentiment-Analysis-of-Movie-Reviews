@@ -135,7 +135,7 @@ def calculate_prior_probability(dataset_rows: list, three_weight: bool) -> Dict[
 
 
 # Likelihood
-def prepare_c_counts(three_weight: bool) -> dict[str, int]:
+def prepare_c_counts(three_weight: bool) -> Dict[str, int]:
     if three_weight:
         # var below counts the occurrances of each class.
         c_counts = {
@@ -225,7 +225,10 @@ def calculate_posterior_probability(prior_probabilities: dict, likelihoods: dict
     for row in c_rows:
         sentence_id = row[0]
         sentence = row[1]
-        classification = classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list)
+        if majority_class:
+            classification = int(max(c_counts, key=c_counts.get))
+        else:
+            classification = classify_sentence(sentence, likelihoods, prior_probabilities, three_weight, c_counts, s_list)
 
         classifications.update({sentence_id: classification})
     return classifications
@@ -303,7 +306,7 @@ def plot_confusion_matrix(cm, target_names, t='Confusion matrix') -> None:
     plt.show()
 
 
-def generate_data_for_plot(three_weight: bool) -> (str, list[str]):
+def generate_data_for_plot(three_weight: bool) -> (str, List[str]):
     classes_list = []
     if three_weight:
         max_int = 3
@@ -345,17 +348,17 @@ def calculate_evaluation_dictionaries(cm: ndarray) -> (float, dict[int, int],  d
 if __name__ == '__main__':
     """ CONFIG BOOLEANS """
     # set to true if using a dev set. false if just classifying
-    dev = False
+    dev = True
     # Set to true to output results to CSV
-    output = True
+    output = False
 
     # Laplace Smoothing
-    laplace = True
+    laplace = False
 
     # Preprocessing Booleans
-    stem = True
-    punc = True
-    lower = True
+    stem = False
+    punc = False
+    lower = False
 
     # Feature Selection Parameters
     # Stop list, 0 for no stop list
@@ -363,6 +366,9 @@ if __name__ == '__main__':
 
     # True for 3 classes. False for 5
     three: bool = True
+
+    #For baseline
+    majority_class = True
     """" END CONFIG BOOLEANS """
 
     # Preparation of dataset names
