@@ -1,0 +1,42 @@
+***** Assignment 2: marking report *****
+
+
+
+Student: Bobby WILLIAMS
+
+Student_ID: acb18bw 
+
+
+
+** 3 classes: Dev set **
+
+ - Majority class classifier macro-F1: 0.201
+
+ - Student macro-F1: 0.561566
+
+
+
+** 5 classes: Dev set **
+
+ - Majority class classifier macro-F1: 0.088
+
+ - Student macro-F1: 0.366904
+
+
+
+*** Final mark: 21
+
+
+
+- Report mark: 6
+
+R2: You should have added more information about how the features were selected (e.g. how adjectives were extracted) and why you decided to use these features.
+
+R3: The feature selection you have implemented is equivalent to preprocessing (i.e. stopword removal, stemming, etc). This is not what was expected of feature selection (e.g. this could be selecting adjectives or using a sentiment lexicon).
+
+
+
+- Code & Implementation mark: 15
+
+Excellent all round, well done.
+
